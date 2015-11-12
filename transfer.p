@@ -2,10 +2,10 @@
 .entrypoint START
 
 ;; data on r30, 0 :: pin 45
-;; clock on r30, 3 :: pin 44
+;; reset on r30, 3 :: pin 44
 ;; latch on r30, 5 :: pin 42
+;; clock on r30, 7 :: pin 40
 ;; enable on r30, 1 :: pin 46
-;; reset on r30, 7 :: pin 40
 ;; camera on r30, 6 :: pin 39
 ;; flash on r30, 4 :: pin 41
 
@@ -54,7 +54,7 @@ START:
 	
 	QBBC	SLICE_LOOP, USE_TRIGGER_REG.t0
 
-	CLR	r30, r30, 7	; un-reset		
+	CLR	r30, r30, 3	; un-reset		
 	
 WAIT:
 	QBBC	WAIT, r31.t9 
@@ -77,7 +77,7 @@ DATA_LOOP:
 	;; r2 is bit that's shifted each loop
 	;; r0 is where each byte of data lives
 BYTE_LOOP:
-	CLR	r30, r30, 3	; send clock low
+	CLR	r30, r30, 7	; send clock low
 	AND	r3, r0, r2	; grab a bit from the data
 	QBEQ	SEND_OFF, r3, 0	; if it's 0 then send off
 SEND_ON:
@@ -94,7 +94,7 @@ DELAY:
 	SUB	r_counter, r_counter, 1
 	QBNE	DELAY, r_counter, 0
 
-	SET	r30, r30, 3 	; send clock high
+	SET	r30, r30, 7 	; send clock high
 	
 	QBGT	BYTE_LOOP, r2, 255 ; if 255 > r2 do more of the byte
 
@@ -127,7 +127,7 @@ NEXT_SLICE:
 	QBNE	SLICE_LOOP, NUM_SLICES_REG, 0
 
 
-	SET	r30, r30, 7 	; reset to stop everything
+	SET	r30, r30, 3 	; reset to stop everything
 	
 	MOV	r_counter, TB_CAMERA_REG
 CAMERA_DELAY:
@@ -161,7 +161,7 @@ FLASH_CAPTURE_DELAY:
 	CLR	r30, r30, 6
 	CLR	r30, r30, 4
 
-	CLR	r30, r30, 7	; un-reset
+	CLR	r30, r30, 3	; un-reset
 
 	
 EXIT:
