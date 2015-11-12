@@ -21,11 +21,12 @@ typedef struct {
     uint32_t slice_len, num_slices;
     struct {
 	uint32_t bits, on_time, off_time;
+	uint32_t camera;
     } ticks_between;
 } __attribute__((__packed__)) pru_ram_bits_t;
 
 typedef struct {
-    pru_ram_bits_t *ram; // the ram on the PRU
+    volatile pru_ram_bits_t *ram; // the ram on the PRU
     volatile uint8_t *ddr; // shared with the host
 } pru_data_t;
 
@@ -83,13 +84,25 @@ static void test() {
 
     // on_time -> off_time
     // ddr[0] -> bits
-
     printf("%u = %u\n", pru_data->ram->ticks_between.on_time, pru_data->ram->ticks_between.off_time);
     printf("%u = %u\n", pru_data->ddr[0], pru_data->ram->ticks_between.bits);
     printf("%u = %u\n", pru_data->ram->slice_len, pru_data->ram->slice_len);
-    
+
+
+    printf("%u\n", pru_data->ram->slice_len);
+    printf("%u\n", pru_data->ram->num_slices);
+    printf("%u\n", pru_data->ram->ticks_between.bits);
+    printf("%u\n", pru_data->ram->ticks_between.on_time);
+    printf("%u\n", pru_data->ram->ticks_between.off_time);
+
 }
 
+uint32_t us_to_ticks(uint32_t microseconds) {
+    // PRU runs at 200MHz, so 5ns per instruction
+    // and all delay loops in are 2 instrutions long
+    // == return microseconds * 200 / 2
+    return microseconds * 100;
+}
 
 
 int main(void) {
@@ -98,13 +111,16 @@ int main(void) {
 
     pru_data_t *pru_data = setup();
     pru_data->ram->slice_len = 2;
-    pru_data->ram->num_slices = 2;
-    pru_data->ddr[0] = 0b01011100;
-    pru_data->ddr[1] = 255; //0b11011101;
+    pru_data->ram->num_slices = 1;
+    pru_data->ddr[0] = 0b10101010;////0b01011100;
+    pru_data->ddr[1] = 0b10101010; //255; //0b11011101;
     pru_data->ddr[2] = 0b01011010;
     pru_data->ddr[3] = 0b11011011;
+    pru_data->ram->ticks_between.bits = us_to_ticks(100000);
     pru_data->ram->ticks_between.on_time = 1;
     pru_data->ram->ticks_between.off_time = 1;
+    pru_data->ram->ticks_between.camera = 1;
+
 
     prussdrv_exec_program(PRU_NUM, "./transfer.bin");
 
@@ -114,7 +130,7 @@ int main(void) {
 
     /* test(); */
 
-
+    free(pru_data);
     cleanup();
 	
     return EXIT_SUCCESS;
