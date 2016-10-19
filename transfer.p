@@ -41,7 +41,7 @@ START:
 	;; r10 is the data index counter
 	;; r11 is the end test	
 	MOV	r10, DDR_ADDR_REG
-	ADD	r11, r10, DDR_LEN_REG
+	ADD	r11, r10, 1 //DDR_LEN_REG
 DATA_LOOP:	
 	;; get byte of data
 	LBBO	r0, r10, 0, 1
@@ -56,10 +56,10 @@ BYTE_LOOP:
 	AND	r3, r0, r2
 	QBEQ	SEND_OFF, r3, 0
 SEND_ON:
-	SET	r30, r30, 15
+	SET	r30, r30, 6
 	QBA	BYTE_LOOP_STEP
 SEND_OFF:
-	CLR	r30, r30, 15
+	CLR	r30, r30, 6
 	QBA	BYTE_LOOP_STEP
 BYTE_LOOP_STEP:
 	LSL	r2, r2, 1
@@ -69,7 +69,7 @@ DELAY:
 	SUB	r_counter, r_counter, 1
 	QBNE	DELAY, r_counter, 0
 
-	CLR	r30, r30, 15
+	CLR	r30, r30, 6
 	MOV	r_counter, DELAY_TIME
 DELAY2:
 	SUB	r_counter, r_counter, 1

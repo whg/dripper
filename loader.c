@@ -10,7 +10,7 @@
 #include <prussdrv.h>
 #include <pruss_intc_mapping.h>
 
-#define PRU_NUM 0
+#define PRU_NUM 1
 #define die(fmt, ...) do { printf(fmt"\n", ##__VA_ARGS__); exit(EXIT_FAILURE); } while(0)
 
 typedef struct {
@@ -91,17 +91,17 @@ int main(void) {
 
     init();
 
-    /* pru_data_t *pru_data = setup(); */
-    /* pru_data->ram->ddr_len = 2; */
-    /* pru_data->ddr[0] = 0b01011101; */
-    /* pru_data->ddr[1] = 255; //0b11011101; */
+    pru_data_t *pru_data = setup();
+    pru_data->ram->ddr_len = 2;
+    pru_data->ddr[0] = 0b01011101;
+    pru_data->ddr[1] = 255; //0b11011101;
 
-    /* prussdrv_exec_program(PRU_NUM, "./transfer.bin"); */
+    prussdrv_exec_program(PRU_NUM, "./transfer.bin");
 
-    /* prussdrv_pru_wait_event(PRU_EVTOUT_0); */
-    /* prussdrv_pru_clear_event(PRU_EVTOUT_0, PRU0_ARM_INTERRUPT); */
+    prussdrv_pru_wait_event(PRU_EVTOUT_0);
+    prussdrv_pru_clear_event(PRU_EVTOUT_0, PRU0_ARM_INTERRUPT);
 
-    test();
+    /* test(); */
 
     cleanup();
 	
