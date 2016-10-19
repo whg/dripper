@@ -18,7 +18,7 @@
 
 typedef struct {
     uint32_t ddr_address;
-    volatile uint32_t ddr_len;
+    uint32_t slice_len, num_slices;
     struct {
 	uint32_t bits, on_time, off_time;
     } ticks_between;
@@ -73,7 +73,7 @@ static void test() {
 
     pru_data->ram->ticks_between.on_time = 2345;
     pru_data->ddr[0] = 77;
-    pru_data->ram->ddr_len = 55;
+    pru_data->ram->slice_len = 55;
     //	((uint32_t*) pru_data->ddr)[0] = 66;
 
     prussdrv_exec_program(PRU_NUM, "./loader_test.bin");
@@ -86,7 +86,7 @@ static void test() {
 
     printf("%u = %u\n", pru_data->ram->ticks_between.on_time, pru_data->ram->ticks_between.off_time);
     printf("%u = %u\n", pru_data->ddr[0], pru_data->ram->ticks_between.bits);
-    printf("%u = %u\n", pru_data->ram->ddr_len, pru_data->ram->ddr_len);
+    printf("%u = %u\n", pru_data->ram->slice_len, pru_data->ram->slice_len);
     
 }
 
@@ -97,9 +97,14 @@ int main(void) {
     init();
 
     pru_data_t *pru_data = setup();
-    pru_data->ram->ddr_len = 2;
-    pru_data->ddr[0] = 0b00011100;
+    pru_data->ram->slice_len = 2;
+    pru_data->ram->num_slices = 2;
+    pru_data->ddr[0] = 0b01011100;
     pru_data->ddr[1] = 255; //0b11011101;
+    pru_data->ddr[2] = 0b01011010;
+    pru_data->ddr[3] = 0b11011011;
+    pru_data->ram->ticks_between.on_time = 1;
+    pru_data->ram->ticks_between.off_time = 1;
 
     prussdrv_exec_program(PRU_NUM, "./transfer.bin");
 
