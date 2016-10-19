@@ -14,10 +14,11 @@
 #define die(fmt, ...) do { printf(fmt"\n", ##__VA_ARGS__); exit(EXIT_FAILURE); } while(0)
 
 typedef struct {
-	uint32_t ddr_address;
+	uint32_t ddr_address, ddr_len;
 	struct {
 		uint32_t bits, on_time, off_time;
 	} ticks_between;
+	uint8_t *other;
 } pru_ram_bits_t;
 
 typedef struct {
@@ -70,7 +71,7 @@ static void test() {
 
 	pru_data->ram->ticks_between.on_time = 1234;
 	pru_data->ddr[0] = 66;
-	//	((uint32_t*) pru_data->ddr)[0] = 666;
+	//	((uint32_t*) pru_data->ddr)[0] = 66;
 
 	pru_data->ram->ticks_between.off_time = 0;
 	pru_data->ram->ticks_between.bits = 0;
@@ -84,17 +85,26 @@ static void test() {
 	// ddr[0] -> bits
 
 	printf("1234 = %u\n", pru_data->ram->ticks_between.off_time);
-	printf("666 = %u\n", pru_data->ram->ticks_between.bits);
-	
+	printf("66 = %u\n", pru_data->ram->ticks_between.bits);
+
 }
+
+
 
 int main(void) {
 
 	init();
 
-	//g_pru_data = setup();
+	pru_data_t *pru_data = setup();
+	pru_data->ram->ddr_len = 1;
+	pru_data->ddr[0] = 0b11011101;
 
-	test();
+    prussdrv_exec_program(PRU_NUM, "./transfer.bin");
+
+    prussdrv_pru_wait_event(PRU_EVTOUT_0);
+    prussdrv_pru_clear_event(PRU_EVTOUT_0, PRU0_ARM_INTERRUPT);
+
+	//	test();
 
 	cleanup();
 	
