@@ -96,8 +96,9 @@ int main(void) {
 	init();
 
 	pru_data_t *pru_data = setup();
-	pru_data->ram->ddr_len = 1;
-	pru_data->ddr[0] = 0b11011101;
+	pru_data->ram->ddr_len = 2;
+	pru_data->ddr[0] = 0b01011101;
+	pru_data->ddr[1] = 255; //0b11011101;
 
     prussdrv_exec_program(PRU_NUM, "./transfer.bin");
 
