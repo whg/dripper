@@ -10,16 +10,19 @@
 #include <prussdrv.h>
 #include <pruss_intc_mapping.h>
 
+// if you change this, don't forget to change
+// arg for prussdrv_map_prumem()
 #define PRU_NUM 1
+
 #define die(fmt, ...) do { printf(fmt"\n", ##__VA_ARGS__); exit(EXIT_FAILURE); } while(0)
 
 typedef struct {
-    uint32_t ddr_address, ddr_len;
+    uint32_t ddr_address;
+    volatile uint32_t ddr_len;
     struct {
 	uint32_t bits, on_time, off_time;
     } ticks_between;
-    uint8_t *other;
-} pru_ram_bits_t;
+} __attribute__((__packed__)) pru_ram_bits_t;
 
 typedef struct {
     pru_ram_bits_t *ram; // the ram on the PRU
@@ -53,7 +56,7 @@ static pru_data_t* setup(void) {
     pru_data_t *pru_data = calloc(1, sizeof(*pru_data));
 
     // map the PRU RAM
-    prussdrv_map_prumem(PRUSS0_PRU0_DATARAM, (void**) &pru_data->ram);
+    prussdrv_map_prumem(PRUSS0_PRU1_DATARAM, (void**) &pru_data->ram);
 
     // map the DDR
     prussdrv_map_extmem((void**) &pru_data->ddr);
@@ -70,6 +73,7 @@ static void test() {
 
     pru_data->ram->ticks_between.on_time = 2345;
     pru_data->ddr[0] = 77;
+    pru_data->ram->ddr_len = 55;
     //	((uint32_t*) pru_data->ddr)[0] = 66;
 
     prussdrv_exec_program(PRU_NUM, "./loader_test.bin");
@@ -82,7 +86,8 @@ static void test() {
 
     printf("%u = %u\n", pru_data->ram->ticks_between.on_time, pru_data->ram->ticks_between.off_time);
     printf("%u = %u\n", pru_data->ddr[0], pru_data->ram->ticks_between.bits);
-
+    printf("%u = %u\n", pru_data->ram->ddr_len, pru_data->ram->ddr_len);
+    
 }
 
 
@@ -93,15 +98,17 @@ int main(void) {
 
     pru_data_t *pru_data = setup();
     pru_data->ram->ddr_len = 2;
-    pru_data->ddr[0] = 0b01011101;
+    pru_data->ddr[0] = 0b00011100;
     pru_data->ddr[1] = 255; //0b11011101;
 
     prussdrv_exec_program(PRU_NUM, "./transfer.bin");
 
     prussdrv_pru_wait_event(PRU_EVTOUT_0);
-    prussdrv_pru_clear_event(PRU_EVTOUT_0, PRU0_ARM_INTERRUPT);
+    prussdrv_pru_clear_event(PRU_EVTOUT_0, PRU1_ARM_INTERRUPT);
+    //    printf("%u\n", pru_data->ram->ddr_len);
 
     /* test(); */
+
 
     cleanup();
 	

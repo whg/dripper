@@ -23,7 +23,7 @@
 
 	
 START:
-	// enable OCP master port
+	// enable OCP master port in the SYSCFG register
 	LBCO	r0, C4, 4, 4
 	CLR	r0, r0, 4
 	SBCO	r0, C4, 4, 4
@@ -35,13 +35,13 @@ START:
 	SBBO	r0, r1, 0, 4
 	
 	// get the start address of DDR block
-	// load all the bits we need, it's a contiguous block of 4 uints
+	// load all the bits we need, it's a contiguous block
 	LBCO	PRU_RAM_BITS_START_REG, CONST_PRU_RAM, 0, PRU_RAM_BITS_NUM_BYTES
 
 	;; r10 is the data index counter
 	;; r11 is the end test	
 	MOV	r10, DDR_ADDR_REG
-	ADD	r11, r10, 1 //DDR_LEN_REG
+	ADD	r11, r10, DDR_LEN_REG
 DATA_LOOP:	
 	;; get byte of data
 	LBBO	r0, r10, 0, 1
@@ -80,7 +80,7 @@ DELAY2:
 	;; increment data index
 	ADD	r10, r10, 1
 	QBNE	DATA_LOOP, r10, r11
- 
+
 EXIT:
 	MOV R31.b0, PRU0_R31_VEC_VALID | PRU_EVTOUT_0
 	HALT

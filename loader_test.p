@@ -25,17 +25,25 @@ START:
 	LBCO	DDR_ADDR_REG, CONST_PRU_RAM, 0, 4
 	
 TEST:
+	LBCO	r1, CONST_PRU_RAM, 4, 4
+	ADD	r1, r1, 3
+	SBCO	r1, CONST_PRU_RAM, 4, 4
+
+	
 	// fish out our first test number from DDR
 	LBBO	r0, DDR_ADDR_REG, 0, 1
 	// and write it out to a bit of the PRU RAM
 	;; MOV	r0, 555
+	ADD	r0, r0, 10
 	SBCO	r0, CONST_PRU_RAM, 8, 1
 
 	// fish out the next test
 	LBCO 	r1, CONST_PRU_RAM, 12, 4
 	;; MOV	r1, 444
+	ADD	r1, r1, 3
 	SBCO	r1, CONST_PRU_RAM, 16, 4
 
+ 
 EXIT:
 	MOV R31.b0, PRU0_R31_VEC_VALID | PRU_EVTOUT_0
 	HALT
