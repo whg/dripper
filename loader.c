@@ -6,17 +6,19 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <argp.h>
 
 #include <prussdrv.h>
 #include <pruss_intc_mapping.h>
 
 #include "vol/vol.h"
 
-// if you change this, don't forget to change
-// arg for prussdrv_map_prumem()
 #define PRU_NUM 1
 
 #define die(fmt, ...) do { printf(fmt"\n", ##__VA_ARGS__); exit(EXIT_FAILURE); } while(0)
+
+///////////////////////////////////////////////////////////////////
+// data structures
 
 typedef struct {
     uint32_t ddr_address;
@@ -32,7 +34,75 @@ typedef struct {
     volatile uint8_t *ddr; // shared with the host
 } pru_data_t;
 
-pru_data_t *g_pru_data = NULL;
+typedef struct {
+    char *vol_file;
+    float on_time, off_time, bit_time;
+} args_n_opts_t;
+
+///////////////////////////////////////////////////////////////////
+// variables
+
+static pru_data_t *g_pru_data = NULL;
+static vol_t *g_vol = NULL;
+
+struct argp_option argp_options[] = {
+    { "on-time", 'n', "ms", OPTION_ARG_OPTIONAL, "Slice on time in microseconds"},
+    { "off-time", 'f', "ms", OPTION_ARG_OPTIONAL, "Slice off time in microseconds"},
+    { "bit-time", 'b', "ms", OPTION_ARG_OPTIONAL, "Time between bits in microseconds"},
+    { 0 }
+};
+
+static char args_doc[] = "VOL_FILE";
+const char *program_version ="0.1";
+
+///////////////////////////////////////////////////////////////////
+// functions
+
+uint32_t ms_to_ticks(float milliseconds) {
+    // PRU runs at 200MHz, so 5ns per instruction
+    // and all delay loops in are 2 instrutions long
+    // == return microseconds * 200 / 2
+    return (uint32_t) (milliseconds * 100000);
+}
+
+
+static error_t parse_opt(int key, char *arg, struct argp_state *state) {
+    args_n_opts_t *ano = state->input;
+
+    switch (key) {
+    case 'n':
+	ano->on_time = atof(arg);
+    	break;
+
+    case 'f':
+	ano->off_time = atof(arg);
+    	break;
+
+    case 'b':
+	ano->bit_time = atof(arg);
+	break;
+
+    case ARGP_KEY_ARG:
+	if (state->arg_num >= 1) {
+	    /* Too many arguments. */
+	    argp_usage(state);
+	}
+	ano->vol_file = arg;
+	break;
+
+    case ARGP_KEY_END:
+	if (state->arg_num < 1) {
+	    /* Not enough arguments. */
+	    argp_usage(state);
+	}
+	break;
+
+    default:
+	return ARGP_ERR_UNKNOWN;
+    }  
+    return 0;
+} 
+
 
 static void init(void) {
     tpruss_intc_initdata pruss_initdata = PRUSS_INTC_INITDATA;
@@ -49,17 +119,21 @@ static void cleanup(void) {
     if (g_pru_data != NULL) {
 	free(g_pru_data);
     }
+    if (g_vol != NULL) {
+	vol_free_data(g_vol);
+    }
 
     prussdrv_pru_disable(PRU_NUM);
     prussdrv_exit();
 }
 
-static pru_data_t* setup(void) {
+static pru_data_t* setup(const args_n_opts_t *ano) {
 	
     pru_data_t *pru_data = calloc(1, sizeof(*pru_data));
 
     // map the PRU RAM
-    prussdrv_map_prumem(PRUSS0_PRU1_DATARAM, (void**) &pru_data->ram);
+    prussdrv_map_prumem(PRU_NUM == 0 ? PRUSS0_PRU0_DATARAM : PRUSS0_PRU1_DATARAM, 
+			(void**) &pru_data->ram);
 
     // map the DDR
     prussdrv_map_extmem((void**) &pru_data->ddr);
@@ -67,87 +141,58 @@ static pru_data_t* setup(void) {
     // set the DDR address so the PRU can look for the data in the right place
     pru_data->ram->ddr_address = prussdrv_get_phys_addr((void*) pru_data->ddr);
 
+    
+    pru_data->ram->ticks_between.bits = ms_to_ticks(ano->bit_time);
+    pru_data->ram->ticks_between.on_time = ms_to_ticks(ano->on_time);
+    pru_data->ram->ticks_between.off_time = ms_to_ticks(ano->off_time);
+
+    g_vol = malloc(sizeof(*g_vol));
+    uint32_t res = vol_read(ano->vol_file, g_vol);
+    if (res != VOL_READ_SUCCESS) {
+    	printf("can't read vol file %d\n", res);
+    }
+
+    //    printf("vol file dim = %u, %u, %u\n", vol.dim[0], vol.dim[1], vol.dim[2]);
+
+    uint32_t slice_len = vol_get_slice_len(g_vol);
+    uint32_t num_slices = vol_get_num_slices(g_vol);
+    pru_data->ram->slice_len = slice_len;
+    pru_data->ram->num_slices = num_slices;
+    memcpy((void*)pru_data->ddr, g_vol->data, num_slices * slice_len);
+
     return pru_data;
 }
 
-static void test() {
-	
-    pru_data_t *pru_data = setup();
+int main(int argc, char *argv[]) {
 
-    pru_data->ram->ticks_between.on_time = 2345;
-    pru_data->ddr[0] = 77;
-    pru_data->ram->slice_len = 55;
-    //	((uint32_t*) pru_data->ddr)[0] = 66;
+    args_n_opts_t ano;
 
-    prussdrv_exec_program(PRU_NUM, "./loader_test.bin");
+    ano.bit_time = 0.001;
+    ano.on_time = 1;
+    ano.off_time = 2;
 
-    prussdrv_pru_wait_event(PRU_EVTOUT_0);
-    prussdrv_pru_clear_event(PRU_EVTOUT_0, PRU0_ARM_INTERRUPT);
-
-    // on_time -> off_time
-    // ddr[0] -> bits
-    printf("%u = %u\n", pru_data->ram->ticks_between.on_time, pru_data->ram->ticks_between.off_time);
-    printf("%u = %u\n", pru_data->ddr[0], pru_data->ram->ticks_between.bits);
-    printf("%u = %u\n", pru_data->ram->slice_len, pru_data->ram->slice_len);
-
-
-    printf("%u\n", pru_data->ram->slice_len);
-    printf("%u\n", pru_data->ram->num_slices);
-    printf("%u\n", pru_data->ram->ticks_between.bits);
-    printf("%u\n", pru_data->ram->ticks_between.on_time);
-    printf("%u\n", pru_data->ram->ticks_between.off_time);
-
-}
-
-uint32_t us_to_ticks(uint32_t microseconds) {
-    // PRU runs at 200MHz, so 5ns per instruction
-    // and all delay loops in are 2 instrutions long
-    // == return microseconds * 200 / 2
-    return microseconds * 100;
-}
-
-
-int main(void) {
-
-    vol_t vol;
-    uint32_t res = vol_read( "./testf.vol", &vol );
-    if ( res != VOL_READ_SUCCESS ) {
-	printf("can't read vol file %d\n", res);
-	return EXIT_FAILURE;
-    }
-
-    printf("dim = %u, %u, %u\n", vol.dim[0], vol.dim[1], vol.dim[2]);
+    struct argp argp = { argp_options, parse_opt, args_doc, 0 };
+    argp_parse(&argp, argc, argv, 0, 0, &ano); 
 
     init();
+    g_pru_data = setup(&ano);
 
-    pru_data_t *pru_data = setup();
-    /* pru_data->ram->slice_len = vol_get_slice_len(&vol); */
-    /* pru_data->ram->num_slices = vol_get_num_slices(&vol); */
-    pru_data->ram->slice_len = 1;
-    pru_data->ram->num_slices = 4;
-    
-    pru_data->ddr[0] = 255;//0b10101010;////0b01011100;
-    pru_data->ddr[1] = 255;//0b10101010; //255; //0b11011101;
-    pru_data->ddr[2] = 255;//0b01011010;
-    pru_data->ddr[3] = 255;//0b11011011;
-    pru_data->ram->ticks_between.bits = us_to_ticks(1000);
-    pru_data->ram->ticks_between.on_time = us_to_ticks(1000000);
-    pru_data->ram->ticks_between.off_time = us_to_ticks(1000000);
-    pru_data->ram->ticks_between.camera = us_to_ticks(10);
+    printf("%u, %u, %u, %s, %u, %u\n", g_pru_data->ram->ticks_between.bits,
+	   g_pru_data->ram->ticks_between.on_time,
+	   g_pru_data->ram->ticks_between.off_time,
+	   ano.vol_file, 
+	   g_pru_data->ram->slice_len,
+	   g_pru_data->ram->num_slices);
 
 
     prussdrv_exec_program(PRU_NUM, "./transfer.bin");
 
     prussdrv_pru_wait_event(PRU_EVTOUT_0);
     prussdrv_pru_clear_event(PRU_EVTOUT_0, PRU1_ARM_INTERRUPT);
-    //    printf("%u\n", pru_data->ram->ddr_len);
 
     /* test(); */
 
-    vol_free_data( &vol );
-    free(pru_data);
     cleanup();
 
     return EXIT_SUCCESS;
 }
-	
