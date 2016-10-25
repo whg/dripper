@@ -7,4 +7,4 @@ test:
 	pasm -b loader_test.p
 
 dto:
-	dtc -O dtb -I dts -o /lib/firmware/DRIPER-00A0.dtbo -b 0 -@ DRIPER-00A0.dts
+	dtc -O dtb -I dts -o /lib/firmware/DRIPPER-00A0.dtbo -b 0 -@ DRIPPER-00A0.dts
