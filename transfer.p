@@ -20,7 +20,8 @@
 #define TB_ON_REG 	r24
 #define TB_OFF_REG 	r25
 #define TB_CAMERA_REG 	r26
-#define PRU_RAM_BITS_NUM_BYTES 28
+#define TB_OFF_SUB_REG	r27
+#define PRU_RAM_BITS_NUM_BYTES 32
 
 #define r_counter r18
 	
@@ -46,8 +47,8 @@ START:
 	;; r10 is the data index counter
 	MOV	r10, DDR_ADDR_REG
 
-WAIT:
-	QBBC	WAIT, r31.t8 
+;; WAIT:
+;; 	QBBC	WAIT, r31.t8 
 	
 	CLR	r30, r30, 3
 
@@ -114,7 +115,7 @@ ON_DELAY:
 ;;; reset or disable here
 	SET	r30, r30, 5
 	
-	MOV	r_counter, 5000
+	MOV	r_counter, 5000 ; 5000 = 25 us
 RESET_DELAY:
 	SUB 	r_counter, r_counter, 1
 	QBNE	RESET_DELAY, r_counter, 0
@@ -126,26 +127,27 @@ OFF_DELAY:
 	SUB 	r_counter, r_counter, 1
 	QBNE	OFF_DELAY, r_counter, 0
 
+	ADD	TB_OFF_REG, TB_OFF_REG, TB_OFF_SUB_REG			
 	
 
 ;;; move on to next slice
 	SUB	NUM_SLICES_REG, NUM_SLICES_REG, 1
 	QBNE	SLICE_LOOP, NUM_SLICES_REG, 0
 
-	MOV	r_counter, TB_CAMERA_REG
-CAMERA_DELAY:
-	SUB	r_counter, r_counter, 1
-	QBNE	CAMERA_DELAY, r_counter, 0
+;; 	MOV	r_counter, TB_CAMERA_REG
+;; CAMERA_DELAY:
+;; 	SUB	r_counter, r_counter, 1
+;; 	QBNE	CAMERA_DELAY, r_counter, 0
 
-;;; capture!
-	SET	r30, r30, 3
-;;; wait for a bit so the trigger registers
-	MOV	r_counter, 10000000
-CAPTURE_DELAY:
-	SUB	r_counter, r_counter, 1
-	QBNE	CAPTURE_DELAY, r_counter, 0
+;; ;;; capture!
+;; 	SET	r30, r30, 3
+;; ;;; wait for a bit so the trigger registers
+;; 	MOV	r_counter, 10000000
+;; CAPTURE_DELAY:
+;; 	SUB	r_counter, r_counter, 1
+;; 	QBNE	CAPTURE_DELAY, r_counter, 0
 
-	CLR	r30, r30, 3
+;; 	CLR	r30, r30, 3
 	
 EXIT:
 	MOV R31.b0, PRU0_R31_VEC_VALID | PRU_EVTOUT_0
