@@ -130,8 +130,7 @@ static void cleanup(void) {
     prussdrv_exit();
 }
 
-static uint32_t setup(const args_n_opts_t *ano) {
-	
+static uint32_t setup(const args_n_opts_t *ano) {	
 
     // map the PRU RAM
     prussdrv_map_prumem(PRU_NUM == 0 ? PRUSS0_PRU0_DATARAM : PRUSS0_PRU1_DATARAM, 
@@ -188,7 +187,8 @@ int main(int argc, char *argv[]) {
 	prussdrv_exec_program(PRU_NUM, "./transfer.bin");
 
 	prussdrv_pru_wait_event(PRU_EVTOUT_0);
-	prussdrv_pru_clear_event(PRU_EVTOUT_0, PRU1_ARM_INTERRUPT);
+	prussdrv_pru_clear_event(PRU_EVTOUT_0,
+				 PRU_NUM == 0 ? PRU0_ARM_INTERRUPT : PRU1_ARM_INTERRUPT);
     }
 
     cleanup();
