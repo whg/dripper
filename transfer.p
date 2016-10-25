@@ -46,8 +46,11 @@ START:
 	;; r10 is the data index counter
 	MOV	r10, DDR_ADDR_REG
 
-	CLR	r30, r30, 3
+WAIT:
+	QBBC	WAIT, r31.t8 
 	
+	CLR	r30, r30, 3
+
 SLICE_LOOP:
 	;; r11 is the slice end test	
 	ADD	r11, r10, SLICE_LEN_REG
