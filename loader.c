@@ -10,6 +10,8 @@
 #include <prussdrv.h>
 #include <pruss_intc_mapping.h>
 
+#include "vol/vol.h"
+
 // if you change this, don't forget to change
 // arg for prussdrv_map_prumem()
 #define PRU_NUM 1
@@ -107,19 +109,31 @@ uint32_t us_to_ticks(uint32_t microseconds) {
 
 int main(void) {
 
+    vol_t vol;
+    uint32_t res = vol_read( "./testf.vol", &vol );
+    if ( res != VOL_READ_SUCCESS ) {
+	printf("can't read vol file %d\n", res);
+	return EXIT_FAILURE;
+    }
+
+    printf("dim = %u, %u, %u\n", vol.dim[0], vol.dim[1], vol.dim[2]);
+
     init();
 
     pru_data_t *pru_data = setup();
-    pru_data->ram->slice_len = 2;
-    pru_data->ram->num_slices = 1;
-    pru_data->ddr[0] = 0b10101010;////0b01011100;
-    pru_data->ddr[1] = 0b10101010; //255; //0b11011101;
-    pru_data->ddr[2] = 0b01011010;
-    pru_data->ddr[3] = 0b11011011;
-    pru_data->ram->ticks_between.bits = us_to_ticks(100000);
-    pru_data->ram->ticks_between.on_time = 1;
-    pru_data->ram->ticks_between.off_time = 1;
-    pru_data->ram->ticks_between.camera = 1;
+    /* pru_data->ram->slice_len = vol_get_slice_len(&vol); */
+    /* pru_data->ram->num_slices = vol_get_num_slices(&vol); */
+    pru_data->ram->slice_len = 1;
+    pru_data->ram->num_slices = 4;
+    
+    pru_data->ddr[0] = 255;//0b10101010;////0b01011100;
+    pru_data->ddr[1] = 255;//0b10101010; //255; //0b11011101;
+    pru_data->ddr[2] = 255;//0b01011010;
+    pru_data->ddr[3] = 255;//0b11011011;
+    pru_data->ram->ticks_between.bits = us_to_ticks(1000);
+    pru_data->ram->ticks_between.on_time = us_to_ticks(1000000);
+    pru_data->ram->ticks_between.off_time = us_to_ticks(1000000);
+    pru_data->ram->ticks_between.camera = us_to_ticks(10);
 
 
     prussdrv_exec_program(PRU_NUM, "./transfer.bin");
@@ -130,9 +144,10 @@ int main(void) {
 
     /* test(); */
 
+    vol_free_data( &vol );
     free(pru_data);
     cleanup();
-	
+
     return EXIT_SUCCESS;
 }
 	

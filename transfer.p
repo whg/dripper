@@ -26,9 +26,6 @@
 	
 #define CTBIR_0 0x22020
 
-#define INS_PER_US 200
-#define DELAY_TIME INS_PER_US * 100000
-
 	
 START:
 	// enable OCP master port in the SYSCFG register
@@ -52,7 +49,6 @@ START:
 	CLR	r30, r30, 3
 	
 SLICE_LOOP:
-
 	;; r11 is the slice end test	
 	ADD	r11, r10, SLICE_LEN_REG
 
@@ -78,6 +74,7 @@ SEND_ON:
 	QBA	BYTE_LOOP_STEP
 SEND_OFF:
 	CLR	r30, r30, 6
+	QBA	BYTE_LOOP_STEP 	; just to keep the instruction count the the same
 BYTE_LOOP_STEP:
 	LSL	r2, r2, 1 	; r2 = r2 << 1
 
@@ -90,10 +87,10 @@ DELAY:
 	
 	;; CLR	r30, r30, 6 	; turn off LED
 
-;; 	MOV	r_counter, DELAY_TIME
-;; DELAY2:
-;; 	SUB	r_counter, r_counter, 1
-;; 	QBNE	DELAY2, r_counter, 0
+	MOV	r_counter, TB_BITS_REG
+DELAY2:
+	SUB	r_counter, r_counter, 1
+	QBNE	DELAY2, r_counter, 0
 	
 	QBGT	BYTE_LOOP, r2, 255 ; if 255 > r2 do more of the byte
 
@@ -113,11 +110,20 @@ ON_DELAY:
 
 ;;; reset or disable here
 	SET	r30, r30, 5
+	
+	MOV	r_counter, 5000
+RESET_DELAY:
+	SUB 	r_counter, r_counter, 1
+	QBNE	RESET_DELAY, r_counter, 0
 
+	CLR	r30, r30, 5
+	
 	MOV	r_counter, TB_OFF_REG
 OFF_DELAY:
 	SUB 	r_counter, r_counter, 1
 	QBNE	OFF_DELAY, r_counter, 0
+
+	
 
 ;;; move on to next slice
 	SUB	NUM_SLICES_REG, NUM_SLICES_REG, 1
@@ -130,7 +136,7 @@ CAMERA_DELAY:
 
 ;;; capture!
 	SET	r30, r30, 3
-
+;;; wait for a bit so the trigger registers
 	MOV	r_counter, 10000000
 CAPTURE_DELAY:
 	SUB	r_counter, r_counter, 1
