@@ -16,6 +16,9 @@
 #define PRU_NUM 1
 
 #define die(fmt, ...) do { printf(fmt"\n", ##__VA_ARGS__); exit(EXIT_FAILURE); } while(0)
+#ifndef max
+#define max(a,b) ((a) > (b) ? (a) : (b))
+#endif
 
 ///////////////////////////////////////////////////////////////////
 // data structures
@@ -147,11 +150,10 @@ static uint32_t setup(const args_n_opts_t *ano) {
 	
     // set the DDR address so the PRU can look for the data in the right place
     g_pru_data->ram->ddr_address = prussdrv_get_phys_addr((void*) g_pru_data->ddr);
-
     
-    g_pru_data->ram->ticks_between.bits = ms_to_ticks(ano->bit_time);
-    g_pru_data->ram->ticks_between.on_time = ms_to_ticks(ano->on_time);
-    g_pru_data->ram->ticks_between.off_time = ms_to_ticks(ano->off_time);
+    g_pru_data->ram->ticks_between.bits = max(1, ms_to_ticks(ano->bit_time));
+    g_pru_data->ram->ticks_between.on_time = max(1, ms_to_ticks(ano->on_time));
+    g_pru_data->ram->ticks_between.off_time = max(1, ms_to_ticks(ano->off_time));
     g_pru_data->ram->ticks_between.camera = ms_to_ticks(0);//ano->off_time);
     g_pru_data->ram->off_time_inc = ms_to_ticks(ano->off_time_inc);
 
@@ -182,7 +184,7 @@ int main(int argc, char *argv[]) {
 
     struct argp argp = { argp_options, parse_opt, args_doc, 0 };
     argp_parse(&argp, argc, argv, 0, 0, &ano); 
-    
+
     init();
     uint32_t setup_failed = setup(&ano);
 
