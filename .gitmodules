@@ -1,0 +1,3 @@
+[submodule "include/vol"]
+	path = include/vol
+	url = https://github.com/whg/vol.git
