@@ -42,6 +42,7 @@ typedef struct {
     char *vol_file;
     float on_time, off_time, bit_time, camera, flash;
     uint32_t other;
+    int quiet;
 } args_n_opts_t;
 
 ///////////////////////////////////////////////////////////////////
@@ -57,6 +58,7 @@ struct argp_option argp_options[] = {
     { "camera-time", 'c', "ms", 0, "Delay before camera (ms)" },
     { "flash-time", 'f', "ms", 0, "Delay before flash (ms)" },
     { "use-trigger", 't', 0, 0, "Use trigger to start" },
+    { "quiet", 'q', 0, 0, "Stop being so chatty" },
     { 0 }
 };
 
@@ -151,7 +153,7 @@ static uint32_t setup(const args_n_opts_t *ano) {
     
     g_pru_data->ram->ticks_between.bits = max(1, ms_to_ticks(ano->bit_time));
     g_pru_data->ram->ticks_between.on_time = max(1, ms_to_ticks(ano->on_time));
-    g_pru_data->ram->ticks_between.off_time = max(1, ms_to_ticks(ano->off_time));
+    g_pru_data->ram->ticks_between.off_time = ms_to_ticks(ano->off_time);
     g_pru_data->ram->ticks_between.camera = max(1, ms_to_ticks(ano->camera));
     g_pru_data->ram->ticks_between.flash = max(1, ms_to_ticks(ano->flash));
     g_pru_data->ram->other = ano->other;
@@ -171,6 +173,18 @@ static uint32_t setup(const args_n_opts_t *ano) {
     return 0;
 }
 
+void print_settings(const args_n_opts_t *ano) {
+    printf("Solenoids on for %.3fms (%u ticks)\n", ano->on_time, g_pru_data->ram->ticks_between.on_time);
+    if (ano->off_time == 0) {
+	printf("There is no off between layers\n");
+    } else {
+	printf("Solenoids off for %.3fms (%u ticks)\n", ano->off_time, g_pru_data->ram->ticks_between.off_time);
+    }
+    printf("%.4fms (%u ticks) between sending bits\n", ano->bit_time, g_pru_data->ram->ticks_between.bits);
+    printf("%.3fms wait before camera trigger (%u ticks)\n", ano->camera, g_pru_data->ram->ticks_between.camera);
+    printf("%.3fms wait before flash trigger (%u ticks)\n", ano->flash, g_pru_data->ram->ticks_between.flash);
+}
+
 int main(int argc, char *argv[]) {
 
     args_n_opts_t ano;
@@ -181,6 +195,7 @@ int main(int argc, char *argv[]) {
     ano.flash = 1;
     ano.camera = 1;
     ano.other = 0;
+    ano.quiet = 0;
 
     struct argp argp = { argp_options, parse_opt, args_doc, 0 };
     argp_parse(&argp, argc, argv, 0, 0, &ano); 
@@ -189,13 +204,16 @@ int main(int argc, char *argv[]) {
     uint32_t setup_failed = setup(&ano);
 
     if (!setup_failed) {	
-	printf("%u, %u, %u, %u, %s, %u, %u\n", g_pru_data->ram->ticks_between.bits,
-	       g_pru_data->ram->ticks_between.on_time,
-	       g_pru_data->ram->ticks_between.off_time,
-	       g_pru_data->ram->ticks_between.camera,
-	       ano.vol_file, 
-	       g_pru_data->ram->slice_len,
-	       g_pru_data->ram->num_slices);
+	if (!ano.quiet) {
+	    print_settings(&ano);
+	}
+	/* printf("%u, %u, %u, %u, %s, %u, %u\n", g_pru_data->ram->ticks_between.bits, */
+	/*        g_pru_data->ram->ticks_between.on_time, */
+	/*        g_pru_data->ram->ticks_between.off_time, */
+	/*        g_pru_data->ram->ticks_between.camera, */
+	/*        ano.vol_file,  */
+	/*        g_pru_data->ram->slice_len, */
+	/*        g_pru_data->ram->num_slices); */
 
 	prussdrv_exec_program(PRU_NUM, "./transfer.bin");
 

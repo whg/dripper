@@ -4,7 +4,7 @@
 ;; data on r30, 6 :: pin 39
 ;; clock on r30, 7 :: pin 40
 ;; latch on r30, 4 :: pin 41
-;; reset on r30, 5 :: pin 42
+;; enable on r30, 5 :: pin 42
 ;; camera on r30, 2 :: pin 43
 ;; flash on r30, 3 :: pin 44
 	
@@ -48,14 +48,13 @@ START:
 
 	;; r10 is the data index counter
 	MOV	r10, DDR_ADDR_REG
-
+	SET	r30, r30, 5 	; disable to begin with
+	
 	QBBC	SLICE_LOOP, USE_TRIGGER_REG.t0
 	
 WAIT:
 	QBBC	WAIT, r31.t8 
 	
-	;; CLR	r30, r30, 3
-
 SLICE_LOOP:
 	;; r11 is the slice end test	
 	ADD	r11, r10, SLICE_LEN_REG
@@ -93,13 +92,6 @@ DELAY:
 
 	SET	r30, r30, 7 	; send clock high
 	
-	;; CLR	r30, r30, 6 	; turn off LED
-
-	MOV	r_counter, TB_BITS_REG
-DELAY2:
-	SUB	r_counter, r_counter, 1
-	QBNE	DELAY2, r_counter, 0
-	
 	QBGT	BYTE_LOOP, r2, 255 ; if 255 > r2 do more of the byte
 
 	;; increment data index
@@ -111,27 +103,21 @@ DELAY2:
 	SET	r30, r30, 4
 ;;; perhaps enable here?
 
+	CLR	r30, r30, 5 	; enable
 	MOV	r_counter, TB_ON_REG
 ON_DELAY:
 	SUB 	r_counter, r_counter, 1
 	QBNE	ON_DELAY, r_counter, 0
 
-;;; reset or disable here
+	QBEQ	NEXT_SLICE, TB_OFF_REG, 0
 	SET	r30, r30, 5
-	
-	MOV	r_counter, 5000 ; 5000 = 25 us
-RESET_DELAY:
-	SUB 	r_counter, r_counter, 1
-	QBNE	RESET_DELAY, r_counter, 0
-
-	CLR	r30, r30, 5
-	
 	MOV	r_counter, TB_OFF_REG
 OFF_DELAY:
 	SUB 	r_counter, r_counter, 1
 	QBNE	OFF_DELAY, r_counter, 0
-	
 
+	
+NEXT_SLICE:
 ;;; move on to next slice
 	SUB	NUM_SLICES_REG, NUM_SLICES_REG, 1
 	QBNE	SLICE_LOOP, NUM_SLICES_REG, 0
