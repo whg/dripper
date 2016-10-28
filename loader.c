@@ -28,9 +28,8 @@ typedef struct {
     uint32_t slice_len, num_slices;
     struct {
 	uint32_t bits, on_time, off_time;
-	uint32_t camera;
+	uint32_t camera, flash;
     } ticks_between;
-    uint32_t off_time_inc;
 } __attribute__((__packed__)) pru_ram_bits_t;
 
 typedef struct {
@@ -40,7 +39,7 @@ typedef struct {
 
 typedef struct {
     char *vol_file;
-    float on_time, off_time, bit_time, off_time_inc;
+    float on_time, off_time, bit_time, camera, flash;
 } args_n_opts_t;
 
 ///////////////////////////////////////////////////////////////////
@@ -51,9 +50,10 @@ static vol_t *g_vol = NULL;
 
 struct argp_option argp_options[] = {
     { "on-time", 'n', "ms", OPTION_ARG_OPTIONAL, "Slice on time (ms)" },
-    { "off-time", 'f', "ms", OPTION_ARG_OPTIONAL, "Slice off time (ms)" },
+    { "off-time", 'o', "ms", OPTION_ARG_OPTIONAL, "Slice off time (ms)" },
     { "bit-time", 'b', "ms", OPTION_ARG_OPTIONAL, "Time between bits (ms)" },
-    { "off-time-inc", 's', "ms", OPTION_ARG_OPTIONAL, "Off time increment every slice" },
+    { "camera-time", 'c', "ms", OPTION_ARG_OPTIONAL, "Delay before camera (ms)" },
+    { "flash-time", 'f', "ms", OPTION_ARG_OPTIONAL, "Delay before flash (ms)" },
     { 0 }
 };
 
@@ -79,16 +79,20 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
 	ano->on_time = atof(arg);
     	break;
 
-    case 'f':
-	ano->off_time = atof(arg);
+    case 'o':
+    	ano->off_time = atof(arg);
     	break;
 
     case 'b':
 	ano->bit_time = atof(arg);
 	break;
 	
-    case 's':
-	ano->off_time_inc = atof(arg);
+    case 'c':
+	ano->camera = atof(arg);
+	break;
+
+    case 'f':
+	ano->flash = atof(arg);
 	break;
 
     case ARGP_KEY_ARG:
@@ -154,8 +158,8 @@ static uint32_t setup(const args_n_opts_t *ano) {
     g_pru_data->ram->ticks_between.bits = max(1, ms_to_ticks(ano->bit_time));
     g_pru_data->ram->ticks_between.on_time = max(1, ms_to_ticks(ano->on_time));
     g_pru_data->ram->ticks_between.off_time = max(1, ms_to_ticks(ano->off_time));
-    g_pru_data->ram->ticks_between.camera = ms_to_ticks(0);//ano->off_time);
-    g_pru_data->ram->off_time_inc = ms_to_ticks(ano->off_time_inc);
+    g_pru_data->ram->ticks_between.camera = max(1, ms_to_ticks(ano->camera));
+    g_pru_data->ram->ticks_between.flash = max(1, ms_to_ticks(ano->flash));
 
     
     uint32_t res = vol_read(ano->vol_file, g_vol);
@@ -180,7 +184,8 @@ int main(int argc, char *argv[]) {
     ano.bit_time = 0.001;
     ano.on_time = 1;
     ano.off_time = 2;
-    ano.off_time_inc = 0;
+    ano.flash = 1;
+    ano.camera = 1;
 
     struct argp argp = { argp_options, parse_opt, args_doc, 0 };
     argp_parse(&argp, argc, argv, 0, 0, &ano); 
@@ -192,7 +197,7 @@ int main(int argc, char *argv[]) {
 	printf("%u, %u, %u, %u, %s, %u, %u\n", g_pru_data->ram->ticks_between.bits,
 	       g_pru_data->ram->ticks_between.on_time,
 	       g_pru_data->ram->ticks_between.off_time,
-	       g_pru_data->ram->off_time_inc,
+	       g_pru_data->ram->ticks_between.camera,
 	       ano.vol_file, 
 	       g_pru_data->ram->slice_len,
 	       g_pru_data->ram->num_slices);

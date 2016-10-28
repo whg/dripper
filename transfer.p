@@ -5,7 +5,8 @@
 ;; clock on r30, 7 :: pin 40
 ;; latch on r30, 4 :: pin 41
 ;; reset on r30, 5 :: pin 42
-;; camera on r30, 3 :: pin 44
+;; camera on r30, 2 :: pin 43
+;; flash on r30, 3 :: pin 44
 	
 #define PRU0_R31_VEC_VALID 32
 #define PRU_EVTOUT_0 3
@@ -20,7 +21,7 @@
 #define TB_ON_REG 	r24
 #define TB_OFF_REG 	r25
 #define TB_CAMERA_REG 	r26
-#define TB_OFF_SUB_REG	r27
+#define TB_FLASH_REG	r27
 #define PRU_RAM_BITS_NUM_BYTES 32
 
 #define r_counter r18
@@ -47,8 +48,8 @@ START:
 	;; r10 is the data index counter
 	MOV	r10, DDR_ADDR_REG
 
-;; WAIT:
-;; 	QBBC	WAIT, r31.t8 
+WAIT:
+	QBBC	WAIT, r31.t8 
 	
 	CLR	r30, r30, 3
 
@@ -126,28 +127,44 @@ RESET_DELAY:
 OFF_DELAY:
 	SUB 	r_counter, r_counter, 1
 	QBNE	OFF_DELAY, r_counter, 0
-
-	ADD	TB_OFF_REG, TB_OFF_REG, TB_OFF_SUB_REG			
 	
 
 ;;; move on to next slice
 	SUB	NUM_SLICES_REG, NUM_SLICES_REG, 1
 	QBNE	SLICE_LOOP, NUM_SLICES_REG, 0
 
-;; 	MOV	r_counter, TB_CAMERA_REG
-;; CAMERA_DELAY:
-;; 	SUB	r_counter, r_counter, 1
-;; 	QBNE	CAMERA_DELAY, r_counter, 0
+	
+	MOV	r_counter, TB_CAMERA_REG
+CAMERA_DELAY:
+	SUB	r_counter, r_counter, 1
+	QBNE	CAMERA_DELAY, r_counter, 0
 
-;; ;;; capture!
-;; 	SET	r30, r30, 3
-;; ;;; wait for a bit so the trigger registers
-;; 	MOV	r_counter, 10000000
-;; CAPTURE_DELAY:
-;; 	SUB	r_counter, r_counter, 1
-;; 	QBNE	CAPTURE_DELAY, r_counter, 0
+	MOV	r1, 8000000
+;;; capture!
+	SET	r30, r30, 2
+;;; wait for a bit so the trigger registers
+	MOV	r_counter, r1
+CAPTURE_DELAY:
+	SUB	r_counter, r_counter, 1
+	QBNE	CAPTURE_DELAY, r_counter, 0
 
-;; 	CLR	r30, r30, 3
+	CLR	r30, r30, 2
+
+	
+	MOV	r_counter, TB_FLASH_REG
+FLASH_DELAY:
+	SUB	r_counter, r_counter, 1
+	QBNE	FLASH_DELAY, r_counter, 0
+	
+;;; flash!
+	SET	r30, r30, 3
+	MOV	r_counter, r1
+FLASH_CAPTURE_DELAY:
+	SUB	r_counter, r_counter, 1
+	QBNE	FLASH_CAPTURE_DELAY, r_counter, 0
+
+	CLR	r30, r30, 3
+
 	
 EXIT:
 	MOV R31.b0, PRU0_R31_VEC_VALID | PRU_EVTOUT_0
