@@ -30,6 +30,7 @@ typedef struct {
 	uint32_t bits, on_time, off_time;
 	uint32_t camera, flash;
     } ticks_between;
+    uint32_t other;
 } __attribute__((__packed__)) pru_ram_bits_t;
 
 typedef struct {
@@ -40,6 +41,7 @@ typedef struct {
 typedef struct {
     char *vol_file;
     float on_time, off_time, bit_time, camera, flash;
+    uint32_t other;
 } args_n_opts_t;
 
 ///////////////////////////////////////////////////////////////////
@@ -49,11 +51,12 @@ static pru_data_t *g_pru_data = NULL;
 static vol_t *g_vol = NULL;
 
 struct argp_option argp_options[] = {
-    { "on-time", 'n', "ms", OPTION_ARG_OPTIONAL, "Slice on time (ms)" },
-    { "off-time", 'o', "ms", OPTION_ARG_OPTIONAL, "Slice off time (ms)" },
-    { "bit-time", 'b', "ms", OPTION_ARG_OPTIONAL, "Time between bits (ms)" },
-    { "camera-time", 'c', "ms", OPTION_ARG_OPTIONAL, "Delay before camera (ms)" },
-    { "flash-time", 'f', "ms", OPTION_ARG_OPTIONAL, "Delay before flash (ms)" },
+    { "on-time", 'n', "ms", 0, "Slice on time (ms)" },
+    { "off-time", 'o', "ms", 0, "Slice off time (ms)" },
+    { "bit-time", 'b', "ms", 0, "Time between bits (ms)" },
+    { "camera-time", 'c', "ms", 0, "Delay before camera (ms)" },
+    { "flash-time", 'f', "ms", 0, "Delay before flash (ms)" },
+    { "use-trigger", 't', 0, 0, "Use trigger to start" },
     { 0 }
 };
 
@@ -93,6 +96,10 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
 
     case 'f':
 	ano->flash = atof(arg);
+	break;
+
+    case 't':
+	ano->other |= 1;
 	break;
 
     case ARGP_KEY_ARG:
@@ -160,7 +167,7 @@ static uint32_t setup(const args_n_opts_t *ano) {
     g_pru_data->ram->ticks_between.off_time = max(1, ms_to_ticks(ano->off_time));
     g_pru_data->ram->ticks_between.camera = max(1, ms_to_ticks(ano->camera));
     g_pru_data->ram->ticks_between.flash = max(1, ms_to_ticks(ano->flash));
-
+    g_pru_data->ram->other = ano->other;
     
     uint32_t res = vol_read(ano->vol_file, g_vol);
     if (res != VOL_READ_SUCCESS) {
@@ -186,6 +193,7 @@ int main(int argc, char *argv[]) {
     ano.off_time = 2;
     ano.flash = 1;
     ano.camera = 1;
+    ano.other = 0;
 
     struct argp argp = { argp_options, parse_opt, args_doc, 0 };
     argp_parse(&argp, argc, argv, 0, 0, &ano); 

@@ -22,7 +22,8 @@
 #define TB_OFF_REG 	r25
 #define TB_CAMERA_REG 	r26
 #define TB_FLASH_REG	r27
-#define PRU_RAM_BITS_NUM_BYTES 32
+#define USE_TRIGGER_REG	r28
+#define PRU_RAM_BITS_NUM_BYTES 36
 
 #define r_counter r18
 	
@@ -48,10 +49,12 @@ START:
 	;; r10 is the data index counter
 	MOV	r10, DDR_ADDR_REG
 
+	QBBC	SLICE_LOOP, USE_TRIGGER_REG.t0
+	
 WAIT:
 	QBBC	WAIT, r31.t8 
 	
-	CLR	r30, r30, 3
+	;; CLR	r30, r30, 3
 
 SLICE_LOOP:
 	;; r11 is the slice end test	
