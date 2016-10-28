@@ -73,30 +73,17 @@ uint32_t ms_to_ticks(float milliseconds) {
     return (uint32_t) (milliseconds * 100000);
 }
 
+#define CASE_ARG_FLOAT(param, chr) case chr: ano->param = atof(arg); break;
 
 static error_t parse_opt(int key, char *arg, struct argp_state *state) {
     args_n_opts_t *ano = state->input;
 
     switch (key) {
-    case 'n':
-	ano->on_time = atof(arg);
-    	break;
-
-    case 'o':
-    	ano->off_time = atof(arg);
-    	break;
-
-    case 'b':
-	ano->bit_time = atof(arg);
-	break;
-	
-    case 'c':
-	ano->camera = atof(arg);
-	break;
-
-    case 'f':
-	ano->flash = atof(arg);
-	break;
+	CASE_ARG_FLOAT(on_time, 'n');
+	CASE_ARG_FLOAT(off_time, 'o');
+	CASE_ARG_FLOAT(bit_time, 'b');
+	CASE_ARG_FLOAT(camera, 'c');
+	CASE_ARG_FLOAT(flash, 'f');
 
     case 't':
 	ano->other |= 1;
