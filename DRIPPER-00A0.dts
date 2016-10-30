@@ -9,7 +9,7 @@
    part-number = "DRIPER";  
    version = "00A0";
    
-   exclusive-use = "P8_27", "P8_28", "P8_29", "P8.39", "P8.40", "P8.41", "P8.42", "P8.43", "P8.44", "pru1";  
+   exclusive-use = "P8_27", "P8_28", "P8_29", "P8.39", "P8.40", "P8.41", "P8.42", "P8.43", "P8.44", "P8.45", "P8.46", "pru1";  
    
    fragment@0 {  
     target = <&am33xx_pinmux>;  
@@ -22,6 +22,8 @@
 	 0xb4 0x05 // P8_42 r30_5
 	 0xa8 0x05 // P8_43 r30_2
 	 0xac 0x05 // P8_44 r30_3
+	 0xa0 0x05 // P8_45 r30_0
+	 0xa4 0x05 // P8_46 r30_1
 
 	 0xe0 0x26 // P8_27 R31_8 - input w/ internal pull up
 	 0xe8 0x26 // P8_28 R31_10 - input w/ internal pull up
