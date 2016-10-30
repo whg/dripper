@@ -6,14 +6,23 @@ if len(sys.argv) < 2:
 else:
     z = int(sys.argv[1])
 
-dim = { 'x': 16, 'y': 16, 'z': z }
+dim = { 'x': 4, 'y': 4, 'z': z }
 print(dim)
 volume = [[] for _ in range(dim['z'])]
 
-for i in range(dim['z']):
-    volume[i] = [1 - (i % 2) for j in range(dim['x'] * dim['y'])]
+# for i in range(dim['z']):
+#     volume[i] = [1 - (i % 2) for j in range(dim['x'] * dim['y'])]
 
-filename = 't%d-%d-%d.py' % (dim['x'], dim['y'], dim['z'])
+for i in range(dim['z']):
+    volume[i] = [1 if i % 4 == j % 4 else 0 for j in range(dim['x'] * dim['y'])]
+
+# for i in range(dim['z']):
+#     volume[i] = [1 for j in range(dim['x'] * dim['y'])]
+
+
+# volume[-1] = [0 for i in range(dim['x'] * dim['y'])]
+
+filename = 'o%d-%d-%d.vol' % (dim['x'], dim['y'], dim['z'])
 
 def pack(slice_contents):
     """
@@ -39,4 +48,6 @@ with open(filename, 'wb') as f:
     f.write(array('B', [ ord(e) for e in 'LOV' ]).tobytes())
 
     for _slice in volume:
+#        print(_slice)
         f.write(array('B', pack(_slice)).tobytes())
+

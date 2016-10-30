@@ -5,8 +5,10 @@
 ;; clock on r30, 3 :: pin 44
 ;; latch on r30, 5 :: pin 42
 ;; enable on r30, 1 :: pin 46
+;; reset on r30, 7 :: pin 40
 ;; camera on r30, 6 :: pin 39
 ;; flash on r30, 4 :: pin 41
+
 	
 #define PRU0_R31_VEC_VALID 32
 #define PRU_EVTOUT_0 3
@@ -51,6 +53,8 @@ START:
 	SET	r30, r30, 1 	; disable to begin with
 	
 	QBBC	SLICE_LOOP, USE_TRIGGER_REG.t0
+
+	CLR	r30, r30, 7	; un-reset		
 	
 WAIT:
 	QBBC	WAIT, r31.t9 
@@ -122,6 +126,8 @@ NEXT_SLICE:
 	SUB	NUM_SLICES_REG, NUM_SLICES_REG, 1
 	QBNE	SLICE_LOOP, NUM_SLICES_REG, 0
 
+
+	SET	r30, r30, 7 	; reset to stop everything
 	
 	MOV	r_counter, TB_CAMERA_REG
 CAMERA_DELAY:
@@ -154,6 +160,9 @@ FLASH_CAPTURE_DELAY:
 
 	CLR	r30, r30, 6
 	CLR	r30, r30, 4
+
+	CLR	r30, r30, 7	; un-reset
+
 	
 EXIT:
 	MOV R31.b0, PRU0_R31_VEC_VALID | PRU_EVTOUT_0
