@@ -91,6 +91,10 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
 	ano->other |= 1;
 	break;
 
+    case 'q':
+	ano->quiet = 1;
+	break;
+
     case ARGP_KEY_ARG:
 	if (state->arg_num >= 1) {
 	    /* Too many arguments. */
@@ -183,6 +187,7 @@ void print_settings(const args_n_opts_t *ano) {
     printf("%.4fms (%u ticks) between sending bits\n", ano->bit_time, g_pru_data->ram->ticks_between.bits);
     printf("%.3fms wait before camera trigger (%u ticks)\n", ano->camera, g_pru_data->ram->ticks_between.camera);
     printf("%.3fms wait before flash trigger (%u ticks)\n", ano->flash, g_pru_data->ram->ticks_between.flash);
+    printf("vol file has %u slices with %u on each slice\n", g_pru_data->ram->num_slices, g_pru_data->ram->slice_len * 8);
 }
 
 int main(int argc, char *argv[]) {
