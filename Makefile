@@ -13,5 +13,6 @@ dto:
 install:
 	ln -fs $(shell pwd)/${EXEC} /usr/local/bin/
 	ln -fs $(shell pwd)/include/vol/scripts/inspect.py /usr/local/bin/
-	ln -fs $(shell pwd)/include/vol/scripts/reorder.py /usr/local/bin/
+	ln -fs $(shell pwd)/include/vol/scripts/inspect.py /usr/local/bin/
+	ln -fs $(shell pwd)/include/vol/scripts/generate.py /usr/local/bin/
 
