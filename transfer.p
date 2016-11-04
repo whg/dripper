@@ -2,10 +2,10 @@
 .entrypoint START
 
 ;; data on r30, 0 :: pin 45
-;; reset on r30, 3 :: pin 44
+;; clock on r30, 3 :: pin 44
 ;; latch on r30, 5 :: pin 42
-;; clock on r30, 7 :: pin 40
 ;; enable on r30, 1 :: pin 46
+;; reset on r30, 7 :: pin 40
 ;; camera on r30, 6 :: pin 39
 ;; flash on r30, 4 :: pin 41
 
@@ -31,6 +31,15 @@
 	
 #define CTBIR_0 0x22020
 
+#define CLK_DELAY 10
+	
+.macro DELAY
+.mparam label, count
+	MOV	r_counter, count
+label:
+	SUB	r_counter, r_counter, 1
+	QBNE	label, r_counter, 0
+.endm
 	
 START:
 	// enable OCP master port in the SYSCFG register
@@ -51,13 +60,12 @@ START:
 	;; r10 is the data index counter
 	MOV	r10, DDR_ADDR_REG
 	SET	r30, r30, 1 	; disable to begin with
+	CLR	r30, r30, 7	; un-reset
 	
 	QBBC	SLICE_LOOP, USE_TRIGGER_REG.t0
-
-	CLR	r30, r30, 3	; un-reset		
-	
 WAIT:
-	QBBC	WAIT, r31.t9 
+	QBBC	WAIT, r31.t9
+
 	
 SLICE_LOOP:
 	;; r11 is the slice end test	
@@ -77,7 +85,9 @@ DATA_LOOP:
 	;; r2 is bit that's shifted each loop
 	;; r0 is where each byte of data lives
 BYTE_LOOP:
-	CLR	r30, r30, 7	; send clock low
+	CLR	r30, r30, 3	; send clock low
+	DELAY	CLK_LOW, CLK_DELAY
+	
 	AND	r3, r0, r2	; grab a bit from the data
 	QBEQ	SEND_OFF, r3, 0	; if it's 0 then send off
 SEND_ON:
@@ -89,12 +99,10 @@ SEND_OFF:
 BYTE_LOOP_STEP:
 	LSL	r2, r2, 1 	; r2 = r2 << 1
 
-	MOV	r_counter, TB_BITS_REG ; start a delay so we can see what we're doing
-DELAY:
-	SUB	r_counter, r_counter, 1
-	QBNE	DELAY, r_counter, 0
+	DELAY	BIT_DELAY, TB_BITS_REG
 
-	SET	r30, r30, 7 	; send clock high
+	SET	r30, r30, 3 	; send clock high
+	DELAY	CLK_HIGH, CLK_DELAY
 	
 	QBGT	BYTE_LOOP, r2, 255 ; if 255 > r2 do more of the byte
 
@@ -108,18 +116,13 @@ DELAY:
 ;;; perhaps enable here?
 
 	CLR	r30, r30, 1 	; enable
-	MOV	r_counter, TB_ON_REG
-ON_DELAY:
-	SUB 	r_counter, r_counter, 1
-	QBNE	ON_DELAY, r_counter, 0
+
+	DELAY	ON_DELAY, TB_ON_REG
 
 	QBEQ	NEXT_SLICE, TB_OFF_REG, 0
 	SET	r30, r30, 1	; disable
-	MOV	r_counter, TB_OFF_REG
-OFF_DELAY:
-	SUB 	r_counter, r_counter, 1
-	QBNE	OFF_DELAY, r_counter, 0
-
+	
+	DELAY	OFF_DELAY, TB_OFF_REG
 	
 NEXT_SLICE:
 ;;; move on to next slice
@@ -127,12 +130,9 @@ NEXT_SLICE:
 	QBNE	SLICE_LOOP, NUM_SLICES_REG, 0
 
 
-	SET	r30, r30, 3 	; reset to stop everything
-	
-	MOV	r_counter, TB_CAMERA_REG
-CAMERA_DELAY:
-	SUB	r_counter, r_counter, 1
-	QBNE	CAMERA_DELAY, r_counter, 0
+	SET	r30, r30, 7 	; reset to stop everything
+
+	DELAY	CAMERA_DELAY, TB_CAMERA_REG
 
 	MOV	r1, 8000000
 ;;; capture!
@@ -145,23 +145,18 @@ CAMERA_DELAY:
 
 ;; 	CLR	r30, r30, 2
 
-	
-	MOV	r_counter, TB_FLASH_REG
-FLASH_DELAY:
-	SUB	r_counter, r_counter, 1
-	QBNE	FLASH_DELAY, r_counter, 0
+
+	DELAY	FLASH_DELAY, TB_FLASH_REG
 	
 ;;; flash!
 	SET	r30, r30, 4
-	MOV	r_counter, r1
-FLASH_CAPTURE_DELAY:
-	SUB	r_counter, r_counter, 1
-	QBNE	FLASH_CAPTURE_DELAY, r_counter, 0
+
+	DELAY	FLASH_CAPTURE_DELAY, r1
 
 	CLR	r30, r30, 6
 	CLR	r30, r30, 4
 
-	CLR	r30, r30, 3	; un-reset
+	CLR	r30, r30, 7	; un-reset
 
 	
 EXIT:
