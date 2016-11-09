@@ -194,7 +194,7 @@ int main(int argc, char *argv[]) {
 
     args_n_opts_t ano;
 
-    ano.bit_time = 0.001;
+    ano.bit_time = 0.0001;
     ano.on_time = 1;
     ano.off_time = 2;
     ano.flash = 1;

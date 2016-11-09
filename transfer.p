@@ -61,6 +61,11 @@ START:
 	MOV	r10, DDR_ADDR_REG
 	SET	r30, r30, 1 	; disable to begin with
 	CLR	r30, r30, 7	; un-reset
+
+	;; MOV	r1, 8000000	;
+;;; capture!
+	SET	r30, r30, 6
+
 	
 	QBBC	SLICE_LOOP, USE_TRIGGER_REG.t0
 WAIT:
@@ -79,15 +84,16 @@ DATA_LOOP:
 	LBBO	r0, r10, 0, 1
 
 	;; MOV	r0, 215		;
-	LDI	r2, 1		; start with 1
+	MOV	r2, 1		; start with 1
 
 	;; r3 is the bit result from each loop
 	;; r2 is bit that's shifted each loop
 	;; r0 is where each byte of data lives
 BYTE_LOOP:
 	CLR	r30, r30, 3	; send clock low
-	DELAY	CLK_LOW, CLK_DELAY
-	
+	DELAY	CLK_LOW, TB_BITS_REG ;; CLK_DELAY
+
+	MOV	r3, 0
 	AND	r3, r0, r2	; grab a bit from the data
 	QBEQ	SEND_OFF, r3, 0	; if it's 0 then send off
 SEND_ON:
@@ -97,12 +103,14 @@ SEND_OFF:
 	CLR	r30, r30, 0
 	QBA	BYTE_LOOP_STEP 	; just to keep the instruction count the the same
 BYTE_LOOP_STEP:
-	LSL	r2, r2, 1 	; r2 = r2 << 1
-
+	MOV	r9, 0
+	LSL	r9, r2, 1 	; r2 = r2 << 1
+	MOV	r2, r9
+	
 	DELAY	BIT_DELAY, TB_BITS_REG
 
 	SET	r30, r30, 3 	; send clock high
-	DELAY	CLK_HIGH, CLK_DELAY
+	DELAY	CLK_HIGH, TB_BITS_REG ;; CLK_DELAY 
 	
 	QBGT	BYTE_LOOP, r2, 255 ; if 255 > r2 do more of the byte
 
@@ -110,6 +118,8 @@ BYTE_LOOP_STEP:
 	ADD	r10, r10, 1
 	QBNE	DATA_LOOP, r10, r11
 
+	DELAY	LAST_CLK_DELAY, 100
+	
 ;; at this point all the data is loaded in we send the latch high
 ;; to move the data to the output stage
 	SET	r30, r30, 5
@@ -121,8 +131,10 @@ BYTE_LOOP_STEP:
 
 	QBEQ	NEXT_SLICE, TB_OFF_REG, 0
 	SET	r30, r30, 1	; disable
-	
+
+	SET	r30, r30, 7	; un-reset
 	DELAY	OFF_DELAY, TB_OFF_REG
+	CLR	r30, r30, 7	; un-reset
 	
 NEXT_SLICE:
 ;;; move on to next slice
@@ -132,11 +144,8 @@ NEXT_SLICE:
 
 	SET	r30, r30, 7 	; reset to stop everything
 
-	DELAY	CAMERA_DELAY, TB_CAMERA_REG
+ 	DELAY	CAMERA_DELAY, TB_CAMERA_REG
 
-	MOV	r1, 8000000
-;;; capture!
-	SET	r30, r30, 6
 ;; ;;; wait for a bit so the trigger registers
 ;; 	MOV	r_counter, r1
 ;; CAPTURE_DELAY:

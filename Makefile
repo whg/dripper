@@ -1,10 +1,10 @@
 EXEC=loader
 all:
-	gcc -std=c99 -Wall -o EXEC loader.c -lprussdrv -Iinclude
+	gcc -std=c99 -Wall -o ${EXEC} loader.c -lprussdrv -Iinclude
 	pasm -b transfer.p
 
 test:
-	gcc -std=c99 -Wall -o EXEC loader.c -lprussdrv
+	gcc -std=c99 -Wall -o ${EXEC} loader.c -lprussdrv
 	pasm -b loader_test.p
 
 dto:
